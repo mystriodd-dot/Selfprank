@@ -1,10 +1,238 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>Test Page</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Security Alert</title>
+<style>
+  :root{
+    --bg:#0b0b0e;
+    --accent:#ff3b30;
+    --muted:#9aa0a6;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,Arial, sans-serif}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#050506 0%,#0f1012 100%);color:#fff}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{
+    width:960px; max-width:100%; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:12px; padding:22px; box-shadow:0 10px 40px rgba(0,0,0,0.6); display:grid; grid-template-columns: 420px 1fr; gap:18px;
+    border:1px solid rgba(255,255,255,0.04);
+  }
+
+  /* Left panel (fake camera) */
+  .cam {
+    background:var(--glass); border-radius:8px; padding:10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .lens{
+    width:360px;height:270px;background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.03), transparent 10%),
+      linear-gradient(180deg,#0c0c0d,#0b0b0b);
+    border-radius:8px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
+    box-shadow: inset 0 6px 20px rgba(0,0,0,0.6);
+  }
+  /* fake face silhouette */
+  .face {
+    width:160px;height:200px;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border-radius:50% 50% 38% 38% / 60% 60% 40% 40%;
+    position:relative; transform:translateY(5px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  .scan-lines{
+    position:absolute; inset:0; pointer-events:none;
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 2px, transparent 2px, transparent 10px);
+    mix-blend-mode:overlay;
+    animation: scan 3s linear infinite;
+  }
+  @keyframes scan{
+    0%{transform:translateY(-100%)}
+    100%{transform:translateY(100%)}
+  }
+
+  /* Right panel */
+  .info{display:flex;flex-direction:column;gap:14px;padding:6px 4px}
+  .title{display:flex;align-items:center;gap:12px}
+  .dot{width:16px;height:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px rgba(255,59,48,0.45)}
+  h1{font-size:20px;margin:0}
+  p.lead{color:var(--muted);margin:0;font-size:13px}
+
+  .status{
+    margin-top:6px; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; font-family:monospace; font-size:13px; color:#dbe4ea;
+    min-height:140px; display:flex; flex-direction:column; gap:8px; justify-content:center;
+  }
+
+  .progress{
+    height:12px; background:rgba(255,255,255,0.03); border-radius:8px; overflow:hidden; width:100%;
+  }
+  .bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent), #ff7a66); transition:width 0.4s ease;}
+  .small{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+
+  .controls{display:flex;gap:8px;margin-top:8px}
+  button{padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+  .btn-neutral{background:rgba(255,255,255,0.06);color:#fff}
+  .btn-prank{background:var(--accent);color:#fff;box-shadow:0 6px 18px rgba(255,59,48,0.18)}
+
+  .reveal{display:none;margin-top:8px;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02)); color:#dff7e1; font-weight:700}
+  .copy{font-family:monospace;font-size:12px;color:var(--muted)}
+
+  /* Small footer */
+  .footer{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-top:6px;color:var(--muted);font-size:12px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.03)}
+  @media(max-width:880px){
+    .card{grid-template-columns:1fr; padding:16px}
+    .lens{width:100%;height:200px}
+  }
+</style>
 </head>
 <body>
-<h1>Hello, this site works!</h1>
-<p>This is a test.</p>
+  <div class="wrap">
+    <div class="card" role="main" aria-live="polite">
+      <div class="cam" aria-hidden="true">
+        <div class="lens" id="lens">
+          <div class="face" id="face"></div>
+          <div class="scan-lines"></div>
+        </div>
+      </div>
+
+      <div class="info">
+        <div class="title">
+          <div class="dot" aria-hidden="true"></div>
+          <div>
+            <h1>Security Alert — Camera Compromised</h1>
+            <p class="lead">Suspicious activity detected. Remote access to camera suspected.</p>
+          </div>
+        </div>
+
+        <div class="status" id="status">
+          <div class="small"><span>Initializing intrusion detection...</span><span id="t1">0%</span></div>
+          <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+
+          <div class="small" style="margin-top:8px"><span id="s2">Analyzing video feed</span><span id="t2">0/5</span></div>
+          <div class="small"><span id="s3">Attempting remote connection</span><span id="t3">—</span></div>
+
+          <div class="controls">
+            <button class="btn-neutral" id="btnCalm">I want help</button>
+            <button class="btn-prank" id="btnReveal">It's a prank</button>
+          </div>
+
+          <div class="reveal" id="reveal">
+            Phew — it's just a prank page. No camera access was used. Be kind when you tell your friend!
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div>Device: Virtual Scanner • Mode: Demo</div>
+        <div class="copy" id="copy">SESSION-ID: —</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // --- purely visual fake diagnostics (no hardware access) ---
+  const bar = document.getElementById('bar');
+  const t1 = document.getElementById('t1');
+  const t2 = document.getElementById('t2');
+  const t3 = document.getElementById('t3');
+  const s2 = document.getElementById('s2');
+  const s3 = document.getElementById('s3');
+  const reveal = document.getElementById('reveal');
+  const copyEl = document.getElementById('copy');
+
+  // create a fake session id
+  function randomId(){
+    return Math.random().toString(36).slice(2,8).toUpperCase() + '-' + Math.floor(Date.now()/1000).toString(36).toUpperCase();
+  }
+  copyEl.textContent = 'SESSION-ID: ' + randomId();
+
+  let pct = 0;
+  let stage = 0;
+  const stages = [
+    {label: 'Initializing intrusion detection...', dur: 1200, pctInc: 12},
+    {label: 'Analyzing video feed', dur: 1400, pctInc: 22},
+    {label: 'Attempting remote connection', dur: 1600, pctInc: 28},
+    {label: 'Exfiltrating frames', dur: 1400, pctInc: 18},
+    {label: 'Finalizing', dur: 900, pctInc: 20},
+  ];
+
+  function nextStage(){
+    if(stage >= stages.length) {
+      // complete
+      t1.textContent = '100%';
+      bar.style.width = '100%';
+      t2.textContent = stages.length + '/' + stages.length;
+      s3.textContent = 'Connection established: REMOTE HOST (demo)';
+      t3.textContent = '●';
+      // flash red and prompt
+      flashFace();
+      return;
+    }
+    const s = stages[stage];
+    s2.textContent = s.label;
+    let incs = Math.floor(s.dur / 200);
+    let local = 0;
+    const iv = setInterval(()=>{
+      local++;
+      pct += s.pctInc / incs;
+      if(pct > 99) pct = 99;
+      t1.textContent = Math.round(pct) + '%';
+      bar.style.width = Math.round(pct) + '%';
+      t2.textContent = (stage+1) + '/' + stages.length;
+      if(local >= incs){
+        clearInterval(iv);
+        stage++;
+        setTimeout(nextStage, 300);
+      }
+    }, 200);
+  }
+
+  // start visual progress
+  setTimeout(nextStage, 600);
+
+  // fake blinking / urgency
+  function flashFace(){
+    const face = document.getElementById('face');
+    let on = 0;
+    const f = setInterval(()=>{
+      on = 1 - on;
+      face.style.boxShadow = on ? '0 0 36px rgba(255,59,48,0.45)' : '0 8px 30px rgba(0,0,0,0.6)';
+    }, 500);
+  }
+
+  // Calm/help button -> show friendly instructions (non-invasive)
+  document.getElementById('btnCalm').addEventListener('click', ()=>{
+    s2.textContent = 'How to secure your device (safe tips):';
+    s3.textContent = '• Close browser • Check camera permissions • Update OS';
+    t3.textContent = 'OK';
+    reveal.style.display = 'block';
+    reveal.style.background = 'linear-gradient(180deg, rgba(0,0,0,0.22), rgba(255,255,255,0.01))';
+    reveal.textContent = 'If you are worried: close this page, check your app permissions, and restart the device. No camera was used by this page.';
+  });
+
+  // Reveal prank explicitly
+  document.getElementById('btnReveal').addEventListener('click', ()=>{
+    // bring progress to 100%
+    pct = 100;
+    bar.style.width = '100%';
+    t1.textContent = '100%';
+    t2.textContent = stages.length + '/' + stages.length;
+    s2.textContent = 'PRANK MODE';
+    s3.textContent = 'No intrusion actually occurred.';
+    t3.textContent = '—';
+    reveal.style.display = 'block';
+    reveal.textContent = 'Just a joke: this page never accessed your camera. Be kind when you tell your friend!';
+  });
+
+  // keyboard escape quickly reveals
+  window.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+      document.getElementById('btnReveal').click();
+    }
+  });
+
+  // optional: small faux console logs for show (no real networking)
+  console.log('%c[DEMO] No hardware accessed. This is a harmless visual only.', 'color: #7ee787; font-weight:700');
+</script>
 </body>
 </html>
